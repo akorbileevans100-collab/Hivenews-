@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hivenews - Sign In</title>
+<style>
+    /* ... your same CSS ... */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", Roboto, sans-serif; }
+    body { display: flex; min-height: 100vh; background: linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('https://images.unsplash.com/photo-1504711434969-e33886168f5c?q=80&w=2070') center/cover no-repeat; background-attachment: fixed; }
+    .signin-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 40px 24px; }
+    .signin-box { width: 100%; max-width: 420px; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 36px; color: #fff; }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; font-size: 24px; font-weight: 700; }
+    h1 { font-size: 32px; margin-bottom: 8px; }
+    .subtitle { color: rgba(255,255,255,0.8); margin-bottom: 24px; }
+    label { display: block; margin-bottom: 6px; font-size: 14px; }
+    input { width: 100%; padding: 12px 14px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff; }
+    .btn { width: 100%; padding: 14px; background: #3b82f6; color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .error { color: #fca5a5; font-size: 13px; margin-bottom: 12px; }
+    .signup-text { text-align: center; margin-top: 20px; font-size: 14px; }
+    .signup-text a { color: #93c5fd; text-decoration: none; font-weight: 600; }
+    .welcome-container { flex: 1; display: flex; justify-content: center; align-items: center; padding: 40px 24px; text-align: center; color: #fff; }
+    @media (max-width: 900px) { body { flex-direction: column; } .welcome-container { order: -1; flex: 0 0 280px; } }
+</style>
+</head>
+<body>
+
+    <div class="signin-container">
+        <div class="signin-box">
+            <div class="logo">📰 Hivenews</div>
+            <h1>Sign In</h1>
+            <p class="subtitle">Welcome back — please sign in to your account</p>
+
+            <form id="loginForm">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="you@example.com" required>
+
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="••••" required>
+
+                <p id="login-error" class="error"></p>
+                <button type="submit" class="btn">Sign In</button>
+            </form>
+           
+            <p class="signup-text">
+                Don't have an account? <a href="signup.html">Sign up</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="welcome-container">
+        <div class="welcome-content">
+            <h2>Welcome to<br>Hivenews</h2>
+            <p>Stay informed with trusted stories from around the world</p>
+        </div>
+    </div>
+
+<script>
+    const API_URL = "https://hivenews-v2.onrender.com";
+    const loginForm = document.getElementById('loginForm');
+
+    loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        document.getElementById('login-error').innerText = '';
+
+        const formData = new URLSearchParams();
+        formData.append('username', document.getElementById('email').value); // backend expects 'username'
+        formData.append('password', document.getElementById('password').value);
+
+        try {
+            const res = await fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: formData
+            });
+            const result = await res.json();
+
+            if (res.ok) {
+                // 1. Save token
+                localStorage.setItem('access_token', result.access_token);
+                
+                // 2. Get role from JWT
+                const payload = JSON.parse(atob(result.access_token.split('.')[1]));
+                localStorage.setItem('user_role', payload.role);
+
+                // 3. GO TO DASHBOARD
+                window.location.href = "dashboard.html";
+
+            } else {
+                document.getElementById('login-error').innerText = result.detail || 'Invalid credentials';
+            }
+        } catch (err) {
+            document.getElementById('login-error').innerText = 'Network error connecting to server';
+        }
+    });
+</script>
+</body>
+</html>

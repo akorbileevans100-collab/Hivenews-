@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hivenews Dashboard</title>
+<style>
+    :root {
+        --primary: #3b82f6;
+        --bg: #0a1e3c;
+        --card: rgba(255,255,255,0.08);
+        --text: #ffffff;
+        --muted: rgba(255,255,255,0.7);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", Roboto, sans-serif; }
+    
+    body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* HEADER */
+    header {
+        background: rgba(10,30,60,0.7);
+        backdrop-filter: blur(16px);
+        padding: 16px 5%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky; top: 0; z-index: 100;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .brand { font-size: 22px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+    nav { display: flex; gap: 20px; }
+    nav a { color: var(--muted); text-decoration: none; font-weight: 500; }
+    nav a:hover { color: var(--text); }
+    .user-info { display: flex; align-items: center; gap: 16px; }
+    #user-welcome { font-size: 14px; color: var(--muted); }
+    .btn {
+        padding: 10px 18px; background: var(--primary); color: #fff; border: none; 
+        border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s;
+    }
+    .btn:hover { background: #2563eb; }
+    .btn-danger { background: #ef4444; padding: 6px 10px; font-size: 12px; }
+    .btn-secondary { background: rgba(255,255,255,0.1); }
+
+    /* HERO */
+    .hero { padding: 20px 5% 0; }
+    .hero img { width: 100%; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+
+    .container { max-width: 1100px; margin: 30px auto; padding: 0 5%; }
+
+    /* ADMIN PANEL */
+    .admin-panel {
+        background: var(--card); backdrop-filter: blur(16px);
+        padding: 24px; border-radius: 16px; 
+        border: 1px solid rgba(255,255,255,0.2);
+        margin-bottom: 30px;
+    }
+    .admin-panel h3 { margin-bottom: 16px; }
+    .admin-panel input, .admin-panel textarea {
+        width: 100%; padding: 12px; margin-bottom: 12px; 
+        border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; 
+        background: rgba(255,255,255,0.1); color: #fff; font-size: 15px;
+    }
+
+    /* SEARCH */
+    .toolbar { display: flex; gap: 10px; margin-bottom: 24px; }
+    .toolbar input { flex: 1; padding: 12px; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff; }
+
+    /* NEWS */
+    .flex-row { display: flex; justify-content: space-between; align-items: center; }
+    #news-feed { display: grid; gap: 20px; }
+    .news-card {
+        background: rgba(255,255,255,0.95); color: #1e293b;
+        padding: 20px; border-radius: 16px; 
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .news-card h4 { font-size: 20px; margin: 5px 0; }
+    .news-card p { color: #475569; line-height: 1.6; }
+    .comment-box { background: #f1f5f9; padding: 10px 12px; border-radius: 8px; margin: 6px 0; font-size: 14px; }
+
+    /* PAGINATION */
+    #pagination { display: flex; gap: 8px; justify-content: center; margin-top: 30px; flex-wrap: wrap; }
+    #pagination button { padding: 8px 14px; border: 1px solid rgba(255,255,255,0.3); background: var(--card); color: #fff; border-radius: 8px; cursor: pointer; }
+    #pagination button.active { background: var(--primary); border-color: var(--primary); }
+
+    .hidden { display: none !important; }
+    .loading { text-align: center; padding: 40px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="dashboard-container">
+    <header>
+        <div class="brand">📰 Hivenews</div>
+        <nav>
+            <a href="#" onclick="loadNews(1)">Home</a>
+            <a href="#">World</a>
+            <a href="#">Tech</a>
+            <a href="#">Sports</a>
+        </nav>
+        <div class="user-info">
+            <span id="user-welcome"></span>
+            <button class="btn" onclick="handleLogout()">Logout</button>
+        </div>
+    </header>
+
+    <!-- HERO IMAGE -->
+    <section class="hero">
+      <img src="hivenews_hero_banner.webp" alt="Hivenews Homepage">
+    </section>
+
+    <div class="container">
+        
+        <!-- ADMIN PANEL -->
+        <div id="admin-panel" class="admin-panel hidden">
+            <h3>Publish New Article</h3>
+            <input type="date" id="post-date">
+            <input type="text" id="post-title" placeholder="Article Title">
+            <textarea id="post-content" placeholder="Write the full article content..." rows="4"></textarea>
+            <button class="btn" onclick="postNews()">Publish Article</button>
+        </div>
+
+        <!-- SEARCH -->
+        <div class="toolbar">
+            <input type="text" id="search-input" placeholder="Search by title or keyword...">
+            <button class="btn" onclick="searchNews()">Search</button>
+            <button class="btn btn-secondary" onclick="loadNews(1)">Reset</button>
+        </div>
+
+        <!-- NEWS FEED -->
+        <div id="news-feed" class="loading">Loading news...</div>
+
+        <!-- PAGINATION -->
+        <div id="pagination"></div>
+
+    </div>
+</div>
+
+<script>
+    const API_URL = "https://hivenews-v2.onrender.com";
+    let accessToken = localStorage.getItem("access_token") || "";
+    let currentUserRole = localStorage.getItem("user_role") || "";
+
+    window.onload = () => {
+        if (!accessToken) {
+            alert("Please login first");
+            window.location.href = "index.html";
+            return;
+        }
+        showDashboard();
+        loadNews();
+    };
+
+    function showDashboard() {
+        document.getElementById('user-welcome').innerText = `Logged in as: ${currentUserRole.toUpperCase()}`;
+        if (currentUserRole === 'admin') {
+            document.getElementById('admin-panel').classList.remove('hidden');
+        }
+    }
+
+    function handleLogout() {
+        localStorage.clear();
+        window.location.href = "index.html";
+    }
+
+    async function loadNews(page = 1) {
+        document.getElementById('news-feed').innerHTML = '<div class="loading">Loading news...</div>';
+        try {
+            const res = await fetch(`${API_URL}/read?page=${page}&limit=5`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (res.status === 401) { handleLogout(); return; }
+            const data = await res.json();
+            renderNews(data.data);
+            renderPagination(data.current_page, data.total_pages);
+        } catch (err) {
+            console.error("Failed to load news");
+            document.getElementById('news-feed').innerHTML = '<p style="color:red;">Failed to load news</p>';
+        }
+    }
+
+    function renderNews(posts) {
+        const feed = document.getElementById('news-feed');
+        feed.innerHTML = '';
+        if (!posts || posts.length === 0) {
+            feed.innerHTML = '<p class="loading">No news found.</p>';
+            return;
+        }
+
+        posts.forEach(post => {
+            let deleteBtn = currentUserRole === 'admin' ? `<button class="btn-danger" onclick="deleteNews(${post.id})">Delete</button>` : '';
+            
+            feed.innerHTML += `
+                <div class="news-card">
+                    <div class="flex-row">
+                        <small style="color: #666;">${post.date}</small>
+                        ${deleteBtn}
+                    </div>
+                    <h4>${post.title}</h4>
+                    <p>${post.content}</p>
+                    <hr style="border:0; border-top:1px solid #ddd; margin: 16px 0;">
+                    <h5>Comments</h5>
+                    <div id="comments-${post.id}">Loading...</div>
+                    <div style="margin-top: 8px; display: flex; gap: 5px;">
+                        <input type="text" id="comment-input-${post.id}" placeholder="Add comment..." style="margin:0; font-size:14px; flex:1; padding:8px; border-radius:6px; border:1px solid #ccc;">
+                        <button style="padding: 6px 10px; font-size: 12px;" class="btn" onclick="postComment(${post.id})">Send</button>
+                    </div>
+                </div>
+            `;
+            loadComments(post.id);
+        });
+    }
+
+    function renderPagination(current, total) {
+        const pag = document.getElementById('pagination');
+        pag.innerHTML = '';
+        for (let i = 1; i <= total; i++) {
+            pag.innerHTML += `<button class="${i === current ? 'active' : 'btn-secondary'}" onclick="loadNews(${i})">${i}</button>`;
+        }
+    }
+
+    async function searchNews() {
+        const query = document.getElementById('search-input').value;
+        if (!query) return loadNews();
+
+        try {
+            const res = await fetch(`${API_URL}/posts/${encodeURIComponent(query)}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (res.ok) {
+                const posts = await res.json();
+                renderNews(posts);
+                document.getElementById('pagination').innerHTML = '';
+            } else {
+                document.getElementById('news-feed').innerHTML = '<p style="color:red;">News not found.</p>';
+                document.getElementById('pagination').innerHTML = '';
+            }
+        } catch (err) {
+            console.error("Search failed");
+        }
+    }
+
+    async function postNews() {
+        const data = {
+            date: document.getElementById('post-date').value,
+            title: document.getElementById('post-title').value,
+            content: document.getElementById('post-content').value
+        };
+
+        const res = await fetch(`${API_URL}/post`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+            alert("News published!");
+            document.getElementById('post-title').value = '';
+            document.getElementById('post-content').value = '';
+            loadNews();
+        } else {
+            alert("Failed to post news");
+        }
+    }
+
+    async function deleteNews(id) {
+        if (!confirm("Are you sure?")) return;
+        const res = await fetch(`${API_URL}/delete_news/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        });
+        if (res.ok) loadNews();
+        else alert("Failed to delete");
+    }
+
+    async function loadComments(newsId) {
+        try {
+            const res = await fetch(`${API_URL}/read_comment/${newsId}`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            if (res.ok) {
+                const comments = await res.json();
+                const container = document.getElementById(`comments-${newsId}`);
+                if (comments.length === 0) {
+                    container.innerHTML = '<i style="color:#888; font-size:13px;">No comments yet.</i>';
+                    return;
+                }
+                container.innerHTML = comments.map(c => `<div class="comment-box">💬 ${c.comment}</div>`).join('');
+            }
+        } catch (err) {
+            document.getElementById(`comments-${newsId}`).innerText = 'Error loading comments';
+        }
+    }
+
+    async function postComment(newsId) {
+        const input = document.getElementById(`comment-input-${newsId}`);
+        const commentText = input.value;
+        if (!commentText) return;
+
+        const res = await fetch(`${API_URL}/comments/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${accessToken}`
+            },
+            body: JSON.stringify({ news_id: newsId, comment: commentText })
+        });
+
+        if (res.ok) {
+            input.value = '';
+            loadComments(newsId);
+        } else {
+            alert("Failed to post comment");
+        }
+    }
+</script>
+</body>
+</html>
